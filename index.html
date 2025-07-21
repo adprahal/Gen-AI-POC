@@ -160,10 +160,15 @@
                 }
 
                 const data = await response.json();
-                console.log("Backend Response:", data);
+                console.log("Backend Response (full object):", data); // Log the full response object
+                console.log("query_results_data:", data.query_results_data); // Log the specific data array
+                console.log("Is query_results_data an array?", Array.isArray(data.query_results_data)); // Check if it's an array
+                console.log("Length of query_results_data:", data.query_results_data ? data.query_results_data.length : 'undefined/null'); // Log its length
 
                 let tableHtml = '';
-                if (data.query_results_data && data.query_results_data.length > 0) {
+                // Check if it's an array AND has elements
+                if (Array.isArray(data.query_results_data) && data.query_results_data.length > 0) {
+                    console.log("Condition met: Building table HTML...");
                     tableHtml += '<h3 class="text-xl font-semibold mb-2 text-gray-800">Query Results (First 10 Rows):</h3>';
                     tableHtml += '<div class="overflow-x-auto mb-4">'; // Added for horizontal scrolling on small screens
                     tableHtml += '<table class="results-table">';
@@ -180,7 +185,9 @@
                     data.query_results_data.forEach(row => {
                         tableHtml += '<tr>';
                         data.query_results_columns.forEach(col => {
-                            tableHtml += `<td class="px-4 py-2">${row[col] !== null ? row[col] : 'N/A'}</td>`; // Handle nulls
+                            // Ensure row[col] is accessed correctly and handle potential undefined/null
+                            const cellValue = row[col] !== undefined && row[col] !== null ? row[col] : 'N/A';
+                            tableHtml += `<td class="px-4 py-2">${cellValue}</td>`;
                         });
                         tableHtml += '</tr>';
                     });
@@ -188,7 +195,9 @@
                     tableHtml += '</table>';
                     tableHtml += '</div>'; // Close overflow-x-auto div
                 } else {
-                    tableHtml = `<p class="text-base text-gray-700 mb-4">${data.results_metadata}</p>`; // Show metadata if no data
+                    console.log("Condition NOT met: Displaying metadata text only.");
+                    // Only display metadata text if there's no actual table data to show
+                    tableHtml = `<h3 class="text-xl font-semibold mb-2 text-gray-800">Query Results:</h3><p class="text-base text-gray-700 mb-4">${data.results_metadata}</p>`;
                 }
 
 
