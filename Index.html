@@ -18,6 +18,11 @@
             padding: 20px; /* Overall padding for the page */
             box-sizing: border-box;
         }
+        /* Style for preformatted text (SQL queries) */
+        pre {
+            white-space: pre-wrap; /* Ensures long lines wrap */
+            word-wrap: break-word; /* Breaks long words if necessary */
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -40,14 +45,15 @@
         </div>
 
         <!-- Prompt Generator Form (Input Section) -->
-        <div class="w-full p-4 mb-10"> <!-- Added mb-10 for spacing between input and output -->
-            <form action="#" method="POST" class="w-full flex flex-col items-center">
+        <div class="w-full p-4 mb-10">
+            <!-- Changed form to use id and listen for submit event via JS -->
+            <form id="promptForm" class="w-full flex flex-col items-center">
                 <!-- Input Field for Question/Prompt -->
                 <div class="relative w-full mb-6">
                     <input type="text" id="question_input" name="question_input"
                            class="w-full px-5 py-3 pl-12 border border-gray-200 rounded-full shadow-lg bg-white focus:outline-none focus:ring-4 focus:ring-blue-300 focus:border-transparent text-lg transition-all duration-300 ease-in-out"
                            placeholder="Enter your question here"
-                           value="{{ question if question else '' }}" required
+                           required
                            aria-label="Enter your question">
                     <!-- Search Icon (Magnifying Glass) -->
                     <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
@@ -57,6 +63,7 @@
 
                 <!-- Submit Button -->
                 <div class="flex justify-center">
+                    <!-- Changed type to "submit" and form will be handled by JS -->
                     <button type="submit"
                             class="px-8 py-3 bg-gradient-to-r from-blue-400 to-cyan-500 text-white rounded-full text-base font-medium hover:from-blue-500 hover:to-cyan-600 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-75 transition-all duration-300 ease-in-out shadow-lg transform hover:scale-105">
                         Generate Response
@@ -65,15 +72,112 @@
             </form>
         </div>
 
-        <!-- Response Section (Output Section - conditionally displayed) -->
-        {% if output %}
-            <div class="w-full flex flex-col flex-grow mt-4"> <!-- Added mt-4 for spacing if output appears -->
-                <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Response:</h2>
-                    <pre class="text-gray-800 text-base leading-relaxed whitespace-pre-wrap word-wrap break-word">{{ output }}</pre>
-                </div>
+        <!-- Response Section (Output Section - now dynamically updated by JavaScript) -->
+        <!-- Removed {% if output %} and {{ output }} tags -->
+        <div id="output" class="w-full flex flex-col flex-grow mt-4">
+            <!-- Content will be inserted here by JavaScript -->
+            <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Response:</h2>
+                <p class="text-gray-500 text-base leading-relaxed">Your insights will appear here after you submit a question.</p>
             </div>
-        {% endif %}
+        </div>
     </div>
+
+    <!-- JavaScript for API Integration -->
+    <script>
+        // --- IMPORTANT: REPLACE 'https://adprahal.pythonanywhere.com/ask' with YOUR ACTUAL PythonAnywhere API URL ---
+        const BACKEND_API_URL = "https://adprahal.pythonanywhere.com/ask";
+
+        const promptForm = document.getElementById('promptForm');
+        const questionInput = document.getElementById('question_input');
+        const outputDiv = document.getElementById('output');
+        const generateButton = promptForm.querySelector('button[type="submit"]'); // Get the submit button
+
+        // Event listener for form submission
+        promptForm.addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission (page reload)
+            await sendQuestion();
+        });
+
+        // Function to send the question to the PythonAnywhere backend
+        async function sendQuestion() {
+            const question = questionInput.value.trim(); // Get and trim the input value
+
+            if (!question) {
+                outputDiv.innerHTML = '<p class="text-red-600">Please enter a question before generating a response.</p>';
+                return;
+            }
+
+            // Display a loading message and disable the button
+            outputDiv.innerHTML = `
+                <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
+                    <p class="text-gray-600 flex items-center justify-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing your request... Please wait.
+                    </p>
+                </div>
+            `;
+            generateButton.disabled = true; // Disable button during processing
+            generateButton.classList.add('opacity-50', 'cursor-not-allowed'); // Add disabled styling
+
+            try {
+                const response = await fetch(BACKEND_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question
+                    })
+                });
+
+                if (!response.ok) {
+                    // If the server responded with an error status (e.g., 400, 500)
+                    const errorText = await response.text(); // Get the raw error response
+                    throw new Error(`HTTP error! Status: ${response.status}. Response: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log("Backend Response:", data); // Log the full response for debugging
+
+                // Update your UI with the summary and local file paths (as messages)
+                outputDiv.innerHTML = `
+                    <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
+                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Summary:</h3>
+                        <p class="text-lg text-gray-700 leading-relaxed mb-4">${data.summary}</p>
+
+                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Generated SQL:</h3>
+                        <pre class="bg-gray-100 p-4 rounded-lg text-sm font-mono overflow-auto mb-4">${data.sql_query}</pre>
+
+                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Results Metadata:</h3>
+                        <p class="text-base text-gray-700 mb-4">${data.results_metadata}</p>
+
+                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Saved Files (on PythonAnywhere):</h3>
+                        <p class="text-base text-gray-700">SQLite Output: <code>${data.sqlite_file_path || 'N/A'}</code></p>
+                        <p class="text-base text-gray-700">Excel Output: <code>${data.excel_file_path || 'N/A'}</code></p>
+                        <p class="text-sm text-red-500 mt-2">Note: Files saved on PythonAnywhere's free tier may not persist across server restarts.</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error("Error sending question to backend:", error);
+                outputDiv.innerHTML = `
+                    <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
+                        <h3 class="text-xl font-semibold mb-2 text-red-600">Error:</h3>
+                        <p class="text-lg text-red-700">Could not get a valid response from the backend.</p>
+                        <p class="text-sm text-red-600">Details: ${error.message}</p>
+                        <p class="text-sm text-gray-500 mt-2">Please check your browser's console (F12) for more technical details or review your PythonAnywhere logs.</p>
+                    </div>
+                `;
+            } finally {
+                // Re-enable the button after processing (success or failure)
+                generateButton.disabled = false;
+                generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    </script>
 </body>
 </html>
