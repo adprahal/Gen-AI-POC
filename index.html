@@ -208,6 +208,12 @@
 
                         ${tableHtml} <!-- Insert the dynamically generated table or metadata here -->
 
+                        <!-- NEW SECTION: Raw Query Data (for debugging/inspection) -->
+                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Raw Query Data (for debugging):</h3>
+                        <p class="text-lg text-gray-700 leading-relaxed mb-4">
+                            <pre class="bg-gray-100 p-4 rounded-lg text-sm font-mono overflow-auto">${JSON.stringify(data.query_results_data, null, 2)}</pre>
+                        </p>
+
                         <h3 class="text-xl font-semibold mb-2 text-gray-800">Summary:</h3>
                         <p class="text-lg text-gray-700 leading-relaxed mb-4">${data.summary}</p>
                         
