@@ -23,6 +23,34 @@
             white-space: pre-wrap; /* Ensures long lines wrap */
             word-wrap: break-word; /* Breaks long words if necessary */
         }
+        /* Basic table styling */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border-radius: 0.5rem;
+            overflow: hidden; /* Ensures rounded corners apply to content */
+        }
+        .results-table th, .results-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0; /* Light border */
+        }
+        .results-table th {
+            background-color: #f8fafc; /* Lighter header background */
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+        .results-table tbody tr:last-child td {
+            border-bottom: none; /* No border on the last row */
+        }
+        .results-table tbody tr:hover {
+            background-color: #f0f4f8; /* Hover effect for rows */
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -46,7 +74,6 @@
 
         <!-- Prompt Generator Form (Input Section) -->
         <div class="w-full p-4 mb-10">
-            <!-- Changed form to use id and listen for submit event via JS -->
             <form id="promptForm" class="w-full flex flex-col items-center">
                 <!-- Input Field for Question/Prompt -->
                 <div class="relative w-full mb-6">
@@ -63,7 +90,6 @@
 
                 <!-- Submit Button -->
                 <div class="flex justify-center">
-                    <!-- Changed type to "submit" and form will be handled by JS -->
                     <button type="submit"
                             class="px-8 py-3 bg-gradient-to-r from-blue-400 to-cyan-500 text-white rounded-full text-base font-medium hover:from-blue-500 hover:to-cyan-600 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-75 transition-all duration-300 ease-in-out shadow-lg transform hover:scale-105">
                         Generate Response
@@ -73,9 +99,7 @@
         </div>
 
         <!-- Response Section (Output Section - now dynamically updated by JavaScript) -->
-        <!-- Removed {% if output %} and {{ output }} tags -->
         <div id="output" class="w-full flex flex-col flex-grow mt-4">
-            <!-- Content will be inserted here by JavaScript -->
             <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
                 <h2 class="text-xl font-semibold text-gray-700 mb-4">Response:</h2>
                 <p class="text-gray-500 text-base leading-relaxed">Your insights will appear here after you submit a question.</p>
@@ -85,30 +109,26 @@
 
     <!-- JavaScript for API Integration -->
     <script>
-        // --- IMPORTANT: REPLACE 'https://adprahal.pythonanywhere.com/ask' with YOUR ACTUAL PythonAnywhere API URL ---
-        const BACKEND_API_URL = "https://adprahal.pythonanywhere.com/ask";
+        const BACKEND_API_URL = "https://yourusername.pythonanywhere.com/ask"; // IMPORTANT: REPLACE THIS
 
         const promptForm = document.getElementById('promptForm');
         const questionInput = document.getElementById('question_input');
         const outputDiv = document.getElementById('output');
-        const generateButton = promptForm.querySelector('button[type="submit"]'); // Get the submit button
+        const generateButton = promptForm.querySelector('button[type="submit"]');
 
-        // Event listener for form submission
         promptForm.addEventListener('submit', async function(event) {
-            event.preventDefault(); // Prevent default form submission (page reload)
+            event.preventDefault();
             await sendQuestion();
         });
 
-        // Function to send the question to the PythonAnywhere backend
         async function sendQuestion() {
-            const question = questionInput.value.trim(); // Get and trim the input value
+            const question = questionInput.value.trim();
 
             if (!question) {
                 outputDiv.innerHTML = '<p class="text-red-600">Please enter a question before generating a response.</p>';
                 return;
             }
 
-            // Display a loading message and disable the button
             outputDiv.innerHTML = `
                 <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
                     <p class="text-gray-600 flex items-center justify-center">
@@ -120,8 +140,8 @@
                     </p>
                 </div>
             `;
-            generateButton.disabled = true; // Disable button during processing
-            generateButton.classList.add('opacity-50', 'cursor-not-allowed'); // Add disabled styling
+            generateButton.disabled = true;
+            generateButton.classList.add('opacity-50', 'cursor-not-allowed');
 
             try {
                 const response = await fetch(BACKEND_API_URL, {
@@ -135,26 +155,53 @@
                 });
 
                 if (!response.ok) {
-                    // If the server responded with an error status (e.g., 400, 500)
-                    const errorText = await response.text(); // Get the raw error response
+                    const errorText = await response.text();
                     throw new Error(`HTTP error! Status: ${response.status}. Response: ${errorText}`);
                 }
 
                 const data = await response.json();
-                console.log("Backend Response:", data); // Log the full response for debugging
+                console.log("Backend Response:", data);
 
-                // Update your UI with the summary and local file paths (as messages)
+                let tableHtml = '';
+                if (data.query_results_data && data.query_results_data.length > 0) {
+                    tableHtml += '<h3 class="text-xl font-semibold mb-2 text-gray-800">Query Results (First 10 Rows):</h3>';
+                    tableHtml += '<div class="overflow-x-auto mb-4">'; // Added for horizontal scrolling on small screens
+                    tableHtml += '<table class="results-table">';
+                    
+                    // Table Header
+                    tableHtml += '<thead><tr>';
+                    data.query_results_columns.forEach(col => {
+                        tableHtml += `<th class="px-4 py-2">${col}</th>`;
+                    });
+                    tableHtml += '</tr></thead>';
+
+                    // Table Body
+                    tableHtml += '<tbody>';
+                    data.query_results_data.forEach(row => {
+                        tableHtml += '<tr>';
+                        data.query_results_columns.forEach(col => {
+                            tableHtml += `<td class="px-4 py-2">${row[col] !== null ? row[col] : 'N/A'}</td>`; // Handle nulls
+                        });
+                        tableHtml += '</tr>';
+                    });
+                    tableHtml += '</tbody>';
+                    tableHtml += '</table>';
+                    tableHtml += '</div>'; // Close overflow-x-auto div
+                } else {
+                    tableHtml = `<p class="text-base text-gray-700 mb-4">${data.results_metadata}</p>`; // Show metadata if no data
+                }
+
+
                 outputDiv.innerHTML = `
                     <div class="output-section text-left bg-white p-6 rounded-lg border border-gray-200 shadow-md flex-grow overflow-auto">
-                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Summary:</h3>
-                        <p class="text-lg text-gray-700 leading-relaxed mb-4">${data.summary}</p>
-
                         <h3 class="text-xl font-semibold mb-2 text-gray-800">Generated SQL:</h3>
                         <pre class="bg-gray-100 p-4 rounded-lg text-sm font-mono overflow-auto mb-4">${data.sql_query}</pre>
 
-                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Results Metadata:</h3>
-                        <p class="text-base text-gray-700 mb-4">${data.results_metadata}</p>
+                        ${tableHtml} <!-- Insert the dynamically generated table or metadata here -->
 
+                        <h3 class="text-xl font-semibold mb-2 text-gray-800">Summary:</h3>
+                        <p class="text-lg text-gray-700 leading-relaxed mb-4">${data.summary}</p>
+                        
                         <h3 class="text-xl font-semibold mb-2 text-gray-800">Saved Files (on PythonAnywhere):</h3>
                         <p class="text-base text-gray-700">SQLite Output: <code>${data.sqlite_file_path || 'N/A'}</code></p>
                         <p class="text-base text-gray-700">Excel Output: <code>${data.excel_file_path || 'N/A'}</code></p>
@@ -173,7 +220,6 @@
                     </div>
                 `;
             } finally {
-                // Re-enable the button after processing (success or failure)
                 generateButton.disabled = false;
                 generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
